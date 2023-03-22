@@ -11,6 +11,6 @@ if __name__ == "__main__":
     val_data = DataGenerator(val)
     test_data = DataGenerator(test)
 
-    model = IRClassifier([(15,), (1025, 513, 1)])
+    model = IRClassifier(train_data[0][0][0].shape)
     model.train(train_data=train_data, val_data=val_data, epochs=100)
     model.evaluate(test_data=test_data)

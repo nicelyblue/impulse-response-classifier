@@ -1,127 +1,70 @@
-import os
+from re import X
 import numpy as np
-import scipy.signal as signal
 import librosa
-import tensorflow as tf
+import os
+from sklearn.preprocessing import StandardScaler
+from tensorflow.keras.utils import Sequence
+from tensorflow.keras.utils import to_categorical
 
-class DataGenerator(tf.keras.utils.Sequence):
-    def __init__(self, filepaths, batch_size=32, shuffle=True, n_fft=2048, hop_length=1024, max_len=1024):
-        self.filepaths = filepaths
+class DataGenerator(Sequence):
+    def __init__(self, file_paths, batch_size=32, n_classes=2):
+        self.file_paths = file_paths
         self.batch_size = batch_size
-        self.shuffle = shuffle
-        self.n_fft = n_fft
-        self.hop_length = hop_length
-        self.max_len = max_len
-        self.on_epoch_end()
+        self.n_classes = n_classes
+        self.scaler = StandardScaler()
 
     def __len__(self):
-        return int(np.ceil(len(self.filepaths) / float(self.batch_size)))
+        return int(np.ceil(len(self.file_paths) / float(self.batch_size)))
 
-    def __getitem__(self, index):
-        batch_filepaths = self.filepaths[index *
-                                         self.batch_size:(index + 1) * self.batch_size]
-        x_1, x_2, y = self.__data_generation(batch_filepaths)
-        x_2 = DataGenerator.normalize_spectrogram(x_2)
-        return [x_1, x_2], y
+    def __getitem__(self, idx):
+        batch_file_paths = self.file_paths[idx * self.batch_size:(idx + 1) * self.batch_size]
+        batch_labels = self.labels()[idx * self.batch_size:(idx + 1) * self.batch_size]
 
-    def on_epoch_end(self):
-        if self.shuffle:
-            np.random.shuffle(self.filepaths)     
+        X = np.array([self.extract_features(file_path) for file_path in batch_file_paths])
+        X = self.scaler.fit_transform(X)  # Standardize features
+        y = np.array(batch_labels)
+        y = to_categorical(y, num_classes=self.n_classes)
+        return X, y
 
-    @staticmethod
-    def normalize_spectrogram(data, axis=(0, 1)):
-        # Squeeze the last dimension with size 1
-        data = np.squeeze(data)
+    def extract_features(self, file_path):
+        y, sr = librosa.load(file_path, sr=16000, duration=2.5)
 
-        # Compute the mean and standard deviation along the desired axis
-        mean = np.mean(data, axis=axis, keepdims=True)
-        std = np.std(data, axis=axis, keepdims=True)
+        features = []
 
-        # Broadcast the mean and standard deviation back to the original shape
-        mean_broadcast = np.broadcast_to(mean, data.shape)
-        std_broadcast = np.broadcast_to(std, data.shape)
+        features.append(librosa.feature.spectral_centroid(y=y, sr=sr))
+        features.append(librosa.feature.spectral_bandwidth(y=y, sr=sr))
+        features.append(librosa.feature.spectral_flatness(y=y))
+        features.append(librosa.feature.spectral_contrast(y=y, sr=sr))
 
-        # Normalize the data
-        data = (data - mean_broadcast) / std_broadcast
+        features.append(librosa.feature.zero_crossing_rate(y))
+        features.append(librosa.feature.rms(y=y))
 
-        # Add the last dimension back to the normalized data
-        data = np.expand_dims(data, axis=-1)
+        y_early = y[:int(sr * 0.05)]
+        y_late = y[int(sr * 0.05):]
 
-        return data
+        early_energy = np.sum(y_early ** 2)
+        late_energy = np.sum(y_late ** 2)
 
-    def __data_generation(self, batch_filepaths):
-        x_1 = []
-        x_2 = []
-        y = []
-        max_len = 0
-        for filepath in batch_filepaths:
-            sig, sr = librosa.load(filepath, sr=None, mono=True)
+        features.append(np.array([early_energy / late_energy if late_energy != 0 else 0]))
 
-            mean = np.mean(sig)
-            var = np.var(sig)
-            skewness = np.mean((sig - mean)**3) / (var**(3/2))
-            kurtosis = np.mean((sig - mean)**4) / (var**2)
+        # mel_spectrogram = librosa.feature.melspectrogram(y=y, sr=sr)
+        # mel_spectrogram_db = librosa.amplitude_to_db(mel_spectrogram, ref=np.max)
 
-            spectrum = np.abs(np.fft.fft(sig))
-            freqs = np.fft.fftfreq(len(sig), d=1/sr)
-            freqs = freqs[:len(freqs)//2]
-            spectrum = spectrum[:len(spectrum)//2]
-            centroid = np.sum(freqs * spectrum) / np.sum(spectrum)
-            spread = np.sqrt(np.sum(((freqs - centroid)**2)
-                             * spectrum) / np.sum(spectrum))
-            flatness = np.exp(np.mean(np.log(spectrum))) / np.mean(spectrum)
-            rolloff = np.interp(0.85, np.cumsum(
-                spectrum)/np.sum(spectrum), freqs)
+        # # Ensure all mel_spectrogram_db have the same shape
+        # fixed_length = 128 * 128  # Change this value based on your desired input size
+        # mel_spectrogram_db = mel_spectrogram_db.flatten()
 
-            f, t, spec = signal.stft(sig, fs=sr, nperseg=self.n_fft,
-                                     noverlap=self.n_fft - self.hop_length, window='hamming')
-            peak_freq = f[np.argmax(np.abs(spec), axis=0)]
-            peak_mag = np.max(np.abs(spec), axis=0)
-            bandwidth = np.sum(
-                np.abs(spec) > 0.5 * np.max(np.abs(spec), axis=0), axis=0) * (f[1] - f[0])
+        # if mel_spectrogram_db.size < fixed_length:
+        #     mel_spectrogram_db = np.pad(mel_spectrogram_db, (0, fixed_length - mel_spectrogram_db.size))
+        # else:
+        #     mel_spectrogram_db = mel_spectrogram_db[:fixed_length]
 
-            ir = sig / np.max(np.abs(sig))
-            ir_energy = np.sum(ir**2)
-            ir_decay = -60
-            ir_decay_rate = 0.0
-            for i in range(0, len(ir)):
-                if ir[i]**2 < ir_energy * 0.05:
-                    ir_decay = i
-                    break
-            if ir_decay > 0:
-                ir_decay_rate = -60.0 / (ir_decay * sr)
-            ir_peak = np.max(np.abs(ir))
-            ir_peak_time = np.argmax(np.abs(ir))
 
-            S = np.abs(librosa.stft(sig, n_fft=self.n_fft,
-                       hop_length=self.hop_length))
-            if self.max_len is None:
-                max_len = S.shape[1]
-            else:
-                max_len = self.max_len
-
-            S_padded = np.zeros((S.shape[0], max_len))
-            S_padded[:, :S.shape[1]] = S[:, :max_len]
-
-            features = np.concatenate([
-                np.array([mean, var, skewness, kurtosis]),
-                np.array([centroid, spread, flatness, rolloff]),
-                np.array([np.mean(peak_freq), np.mean(peak_mag),
-                         np.mean(bandwidth)]),
-                np.array([ir_energy, ir_decay_rate, ir_peak, ir_peak_time])
-            ])
-
-            x_1.append(features)
-            x_2.append(np.transpose(S_padded))
-            y.append(int(os.path.basename(os.path.dirname(filepath))))
-
-        y = np.array(y)
-        y = tf.keras.utils.to_categorical(y, num_classes=2)
-
-        return np.asarray(x_1).astype('float32'), np.asarray(x_2).astype('float32'), y
+        X = np.concatenate([feature.flatten() for feature in features])
+        return X
     
     def labels(self):
         labels = []
-        for filepath in self.filepaths:
+        for filepath in self.file_paths:
             labels.append(int(os.path.basename(os.path.dirname(filepath))))
         return np.array(labels)

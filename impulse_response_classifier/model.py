@@ -6,48 +6,26 @@ import tensorflow as tf
 from sklearn.metrics import confusion_matrix, accuracy_score, balanced_accuracy_score, recall_score, f1_score
 
 class IRClassifier:
-    def __init__(self, input_shape, model_path=os.path.relpath('model'), n_classes=2, resize_params=(1024, 512)):
+    def __init__(self, input_shape, model_path=os.path.relpath('model'), n_classes=2):
         self.input_shape = input_shape
         self.n_classes = n_classes
-        self.resize_params = resize_params
         self.model_path = model_path
         self.build_model()
 
     def build_model(self):
-        inputs1 = tf.keras.layers.Input(
+        input = tf.keras.layers.Input(
             shape=self.input_shape[0])
-        inputs2 = tf.keras.layers.Input(
-            shape=self.input_shape[1])
 
-        resize_layer = tf.keras.layers.Resizing(self.resize_params[0], self.resize_params[1], interpolation='bilinear', name='resize_layer')(inputs2)
-
-        dense = tf.keras.layers.Dense(32, activation='relu')(inputs1)
-        dense = tf.keras.layers.Dropout(0.5)(dense)
-        dense = tf.keras.layers.Dense(16, activation='relu')(dense)
-        dense = tf.keras.layers.Dropout(0.5)(dense)
-
-        conv = tf.keras.layers.Conv2D(
-            8, (3, 3), activation='relu')(resize_layer)
-        conv = tf.keras.layers.MaxPooling2D((2, 2))(conv)
-        # conv = tf.keras.layers.Dropout(0.5)(conv)
-        conv = tf.keras.layers.Conv2D(
-            16, (3, 3), activation='relu')(conv)
-        conv = tf.keras.layers.MaxPooling2D((2, 2))(conv)
-        # conv = tf.keras.layers.Dropout(0.5)(conv)
-        conv = tf.keras.layers.Conv2D(
-            32, (3, 3), activation='relu')(conv)
-        conv = tf.keras.layers.MaxPooling2D((2, 2))(conv)
-        conv = tf.keras.layers.Dropout(0.5)(conv)
-        conv = tf.keras.layers.Flatten()(conv)
-
-        x = tf.keras.layers.concatenate([dense, conv], axis=-1)
-        x = tf.keras.layers.Dense(8, activation='relu')(x)
-        x = tf.keras.layers.Dropout(0.5)(x)
-        output = tf.keras.layers.Dense(
-            self.n_classes, activation='softmax')(x)
+        dense = tf.keras.layers.Dense(256, activation='relu')(input)
+        # dense = tf.keras.layers.Dropout(0.5)(dense)
+        dense = tf.keras.layers.Dense(64, activation='relu')(dense)
+        # dense = tf.keras.layers.Dropout(0.5)(dense)
+        x = tf.keras.layers.Dense(32, activation='relu')(dense)
+        # x = tf.keras.layers.Dropout(0.5)(x)
+        output = tf.keras.layers.Dense(self.n_classes, activation='softmax')(x)
 
         self.model = tf.keras.Model(
-            inputs=[inputs1, inputs2], outputs=output)
+            inputs=input, outputs=output)
 
     def train(self, train_data, val_data, epochs, early_stop_patience=5, reduce_lr_factor=0.5, reduce_lr_patience=2, reduce_lr_min_delta=0.01):
         self.model.summary(expand_nested=True)
