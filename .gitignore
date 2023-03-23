@@ -3,4 +3,5 @@ data
 test_data
 logs
 model
+*.egg-info
 __pycache__

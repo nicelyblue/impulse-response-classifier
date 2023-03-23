@@ -14,7 +14,7 @@ def parse_args():
         args.savedir = 'model'
     return args
 
-if __name__ == "__main__":
+def main():
     arguments = parse_args()
     collector = PathCollector(arguments.train)
 
@@ -32,3 +32,6 @@ if __name__ == "__main__":
     model = IRClassifier(arguments.savedir)
     model.train(train_data, val_data)
     model.evaluate(test_data)
+
+if __name__ == "__main__":
+    main()
