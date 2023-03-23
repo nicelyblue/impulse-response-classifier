@@ -1,5 +1,6 @@
 .venv
 data
+test_data
 logs
 model
 __pycache__

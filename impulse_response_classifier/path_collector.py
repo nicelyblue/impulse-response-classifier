@@ -3,7 +3,7 @@ import random
 
 class PathCollector:
     def __init__(self, root_dir, extensions=['.wav', '.Wav']):
-        self.root_dir = root_dir
+        self.root_dir = os.path.abspath(root_dir)
         self.extensions = extensions
         self.file_paths = []
 

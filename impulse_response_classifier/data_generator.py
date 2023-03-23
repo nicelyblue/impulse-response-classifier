@@ -21,13 +21,13 @@ class DataGenerator(Sequence):
         batch_labels = self.labels()[idx * self.batch_size:(idx + 1) * self.batch_size]
 
         X = np.array([self.extract_features(file_path) for file_path in batch_file_paths])
-        X = self.scaler.fit_transform(X)  # Standardize features
+        X = self.scaler.fit_transform(X)
         y = np.array(batch_labels)
         y = to_categorical(y, num_classes=self.n_classes)
         return X, y
 
     def extract_features(self, file_path):
-        y, sr = librosa.load(file_path, sr=16000, duration=2.5)
+        y, sr = librosa.load(file_path, sr=16000, mono=True, duration=2.5)
 
         features = []
 
@@ -46,19 +46,6 @@ class DataGenerator(Sequence):
         late_energy = np.sum(y_late ** 2)
 
         features.append(np.array([early_energy / late_energy if late_energy != 0 else 0]))
-
-        # mel_spectrogram = librosa.feature.melspectrogram(y=y, sr=sr)
-        # mel_spectrogram_db = librosa.amplitude_to_db(mel_spectrogram, ref=np.max)
-
-        # # Ensure all mel_spectrogram_db have the same shape
-        # fixed_length = 128 * 128  # Change this value based on your desired input size
-        # mel_spectrogram_db = mel_spectrogram_db.flatten()
-
-        # if mel_spectrogram_db.size < fixed_length:
-        #     mel_spectrogram_db = np.pad(mel_spectrogram_db, (0, fixed_length - mel_spectrogram_db.size))
-        # else:
-        #     mel_spectrogram_db = mel_spectrogram_db[:fixed_length]
-
 
         X = np.concatenate([feature.flatten() for feature in features])
         return X

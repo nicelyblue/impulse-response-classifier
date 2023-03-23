@@ -6,28 +6,27 @@ import tensorflow as tf
 from sklearn.metrics import confusion_matrix, accuracy_score, balanced_accuracy_score, recall_score, f1_score
 
 class IRClassifier:
-    def __init__(self, input_shape, model_path=os.path.relpath('model'), n_classes=2):
-        self.input_shape = input_shape
+    def __init__(self, model_path='model', n_classes=2):
         self.n_classes = n_classes
-        self.model_path = model_path
-        self.build_model()
+        self.model_path = os.path.abspath(model_path)
 
-    def build_model(self):
+    def build_model(self, input_shape):
         input = tf.keras.layers.Input(
-            shape=self.input_shape[0])
+            shape=input_shape[0])
 
         dense = tf.keras.layers.Dense(256, activation='relu')(input)
-        # dense = tf.keras.layers.Dropout(0.5)(dense)
+        dense = tf.keras.layers.Dropout(0.5)(dense)
         dense = tf.keras.layers.Dense(64, activation='relu')(dense)
-        # dense = tf.keras.layers.Dropout(0.5)(dense)
+        dense = tf.keras.layers.Dropout(0.5)(dense)
         x = tf.keras.layers.Dense(32, activation='relu')(dense)
-        # x = tf.keras.layers.Dropout(0.5)(x)
+        x = tf.keras.layers.Dropout(0.5)(x)
         output = tf.keras.layers.Dense(self.n_classes, activation='softmax')(x)
 
         self.model = tf.keras.Model(
             inputs=input, outputs=output)
 
-    def train(self, train_data, val_data, epochs, early_stop_patience=5, reduce_lr_factor=0.5, reduce_lr_patience=2, reduce_lr_min_delta=0.01):
+    def train(self, train_data, val_data, epochs=100, early_stop_patience=5, reduce_lr_factor=0.5, reduce_lr_patience=2, reduce_lr_min_delta=0.01):
+        self.build_model(train_data[0][0][0].shape)
         self.model.summary(expand_nested=True)
         
         self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),

@@ -1,6 +1,12 @@
-import os
-import numpy as np
 from pydub import AudioSegment
+import argparse
+import os
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Standardize the data.')
+    parser.add_argument('--data', nargs='+', help='Data directories.')
+    args = parser.parse_args()
+    return args
 
 def find_wav_files(path):
     wav_files = []
@@ -22,17 +28,19 @@ def pad_wav_file(file_path, max_duration):
         return
 
     padding_duration = max_duration - duration
-    silence = AudioSegment.silent(duration=padding_duration * 1000)  # in milliseconds
+    silence = AudioSegment.silent(duration=padding_duration * 1000)
     padded_audio = audio + silence
     padded_audio.export(file_path, format="wav")
 
 def main():
-    folder_path = "data"  # Replace with your folder path
-    wav_files = find_wav_files(folder_path)
-    max_duration = max(get_duration(file) for file in wav_files)
+    arguments = parse_args()
+    
+    for path in arguments.data:
+        wav_files = find_wav_files(path)
+        max_duration = max(get_duration(file) for file in wav_files)
 
-    for wav_file in wav_files:
-        pad_wav_file(wav_file, max_duration)
+        for wav_file in wav_files:
+            pad_wav_file(wav_file, max_duration)
 
 if __name__ == "__main__":
     main()
