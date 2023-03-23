@@ -7,23 +7,31 @@ This repository contains the code for an impulse response classifier that can le
 
 To install this project, simply clone this repository and run the following command:
 
-'$ pip install -e .'
+```bash
+$ pip install -e .
+```
 
 ## Usage
 
 To standardize the dataset, run the following command:
 
-'$ standardize_data --data /path/to/data/to/standardize'
+```bash
+$ standardize_data --data /path/to/data/to/standardize
+```
 
 Run the following command to train the model:
 
-'$ train --train /path/to/train/data --test /path/to/test/data --savedir /path/to/model'
+```bash
+$ train --train /path/to/train/data --test /path/to/test/data --savedir /path/to/model
+```
 
 To evaluate the model, run the following command:
 
-'$ evaluate --eval /path/to/eval/data --savedir /path/to/model --resultsdir /path/to/evaluation/results'
+```bash
+$ evaluate --eval /path/to/eval/data --savedir /path/to/model --resultsdir /path/to/evaluation/results
+```
 
-//Note that the data must be organized into two subfolders: '0' and '1', representing 'simulated' and 'real' labels, respectively. The only supported format is '.wav'.
+//  Note that the data must be organized into two subfolders: '0' and '1', representing 'simulated' and 'real' labels, respectively. The only supported format is '.wav'.
 
 ## Contributing
 
