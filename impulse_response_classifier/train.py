@@ -1,6 +1,6 @@
-from impulse_response_classifier.path_collector import PathCollector
-from impulse_response_classifier.data_generator import DataGenerator
-from impulse_response_classifier.model import IRClassifier
+from impulse_response_classifier.modules.path_collector import PathCollector
+from impulse_response_classifier.modules.data_generator import DataGenerator
+from impulse_response_classifier.modules.model import IRClassifier
 import argparse
 
 def parse_args():
