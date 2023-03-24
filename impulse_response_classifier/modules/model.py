@@ -33,9 +33,9 @@ class IRClassifier:
                            loss='categorical_crossentropy', metrics=['categorical_accuracy'])
 
         early_stop = tf.keras.callbacks.EarlyStopping(
-            monitor='val_categorical_accuracy', patience=early_stop_patience, restore_best_weights=True)
+            monitor='val_loss', patience=early_stop_patience, restore_best_weights=True)
 
-        reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_categorical_accuracy', factor=reduce_lr_factor,
+        reduce_lr = tf.keras.callbacks.ReduceLROnPlateau(monitor='val_loss', factor=reduce_lr_factor,
                                                          patience=reduce_lr_patience, min_delta=reduce_lr_min_delta)
 
         history = self.model.fit(train_data, epochs=epochs,
