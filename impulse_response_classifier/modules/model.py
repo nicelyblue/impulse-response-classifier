@@ -10,23 +10,32 @@ class IRClassifier:
         self.n_classes = n_classes
         self.model_path = os.path.abspath(model_path)
 
-    def build_model(self, input_shape):
-        input = tf.keras.layers.Input(
-            shape=input_shape[0])
-
-        dense = tf.keras.layers.Dense(256, activation='relu')(input)
+    def build_model(self, acoustic_input_shape, spectrogram_input_shape):
+        acoustic_input = tf.keras.layers.Input(shape=acoustic_input_shape)
+        dense = tf.keras.layers.Dense(256, activation='relu')(acoustic_input)
         dense = tf.keras.layers.Dropout(0.5)(dense)
         dense = tf.keras.layers.Dense(64, activation='relu')(dense)
         dense = tf.keras.layers.Dropout(0.5)(dense)
-        x = tf.keras.layers.Dense(32, activation='relu')(dense)
-        x = tf.keras.layers.Dropout(0.5)(x)
+        acoustic_output = tf.keras.layers.Dense(32, activation='relu')(dense)
+
+        spectrogram_input = tf.keras.layers.Input(shape=spectrogram_input_shape)
+        conv = tf.keras.layers.Conv2D(32, (3, 3), activation='relu')(spectrogram_input)
+        conv = tf.keras.layers.MaxPooling2D((2, 2))(conv)
+        conv = tf.keras.layers.Conv2D(64, (3, 3), activation='relu')(conv)
+        conv = tf.keras.layers.MaxPooling2D((2, 2))(conv)
+        conv = tf.keras.layers.Conv2D(128, (3, 3), activation='relu')(conv)
+        conv = tf.keras.layers.MaxPooling2D((2, 2))(conv)
+        conv_output = tf.keras.layers.Flatten()(conv)
+
+        merged_output = tf.keras.layers.Concatenate()([acoustic_output, conv_output])
+
+        x = tf.keras.layers.Dropout(0.5)(merged_output)
         output = tf.keras.layers.Dense(self.n_classes, activation='softmax')(x)
 
-        self.model = tf.keras.Model(
-            inputs=input, outputs=output)
+        self.model = tf.keras.Model(inputs=[acoustic_input, spectrogram_input], outputs=output)
 
     def train(self, train_data, val_data, epochs=100, early_stop_patience=5, reduce_lr_factor=0.5, reduce_lr_patience=2, reduce_lr_min_delta=0.01):
-        self.build_model(train_data[0][0][0].shape)
+        self.build_model(train_data[0][0][0].shape[1:], train_data[0][0][1].shape[1:])
         self.model.summary(expand_nested=True)
         
         self.model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate=0.01),
