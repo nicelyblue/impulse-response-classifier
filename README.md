@@ -1,4 +1,4 @@
-# impulse-response-classifier
+# Impulse Response Classifier
 Is your impulse response synthetic? Time to find out.
 
 This repository contains the code for an impulse response classifier that can learn to classify whether an impulse response is simulated or real.
